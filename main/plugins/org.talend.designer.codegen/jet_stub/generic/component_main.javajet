@@ -115,10 +115,31 @@ if(def instanceof org.talend.components.api.component.OutputComponentDefinition)
                 		%>
                 		<%=main.getName()%> = new <%=main.getName() %>Struct();
                 		<%
+                        for (IMetadataColumn column2 : main.getMetadataTable().getListColumns()) {
+                            boolean copyFromMain = false;
                 		for (IMetadataColumn column : columnList) {
+                                if (column.getLabel().equals(column2.getLabel())) {
 	                		%>
 	                		<%=main.getName()%>.<%=column.getLabel()%> = <%=conn.getName()%>.<%=column.getLabel()%>;
 	                		<%
+                                    copyFromMain = true;
+                                    break;
+                                }
+                            }
+                            // Specific outgoing records that can't be copied from the main.
+                            if (!copyFromMain
+                                    && "org.talend.components.salesforce.tsalesforceoutput.TSalesforceOutputDefinition".equals(def.getClass().getName())
+                                    &&  "salesforce_id".equals(column2.getLabel())) {
+                                %>
+                                java.lang.reflect.Field sfidfield = writer_<%=cid%>.getClass().getField("lastId");
+                                sfidfield.setAccessible(true);
+                                <%=main.getName()%>.<%=column2.getLabel()%> = (String) sfidfield.get(writer_<%=cid%>);
+                                <%
+                            } else if (!copyFromMain) {
+                                %>
+                                // Unknown: <%=main.getName()%>.<%=column2.getLabel()%> = null;
+                                <%
+                            }
                 		}
                 		
                 		//TODO how to pass the additional columns in output connection? like salesforce_id
