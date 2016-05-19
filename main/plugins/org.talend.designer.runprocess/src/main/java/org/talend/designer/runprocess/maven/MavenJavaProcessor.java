@@ -69,7 +69,6 @@ public class MavenJavaProcessor extends JavaProcessor {
         // only job, now for Shadow Process/Data Preview.
         if (isStandardJob()) {
             generatePom();
-            // removeGeneratedJobs(null);
         }
 
         updateProjectPom(null);
@@ -110,8 +109,6 @@ public class MavenJavaProcessor extends JavaProcessor {
             String contextName = JavaResourcesHelper.getJobContextName(this.context);
             setPlatformValues(Platform.OS_WIN32, contextName);
             setPlatformValues(Platform.OS_LINUX, contextName);
-
-            // ProcessorUtilities.resetExportConfig(); because will set back, so no used
         } finally {
             ProcessorUtilities.setExportConfig(oldInterpreter, oldCodeLocation, oldLibraryPath, oldExportConfig,
                     oldExportTimestamp);
@@ -306,26 +303,19 @@ public class MavenJavaProcessor extends JavaProcessor {
         argumentsMap.put(TalendProcessArgumentConstant.ARG_GOAL, getGoals());
 
         talendJavaProject.buildModules(monitor, null, argumentsMap);
-        // try {
-        //
-        // IFolder jobSrcFolder = talendJavaProject.getProject().getFolder(this.getSrcCodePath().removeLastSegments(1));
-        // if (jobSrcFolder.exists()) {
-        // jobSrcFolder.refreshLocal(IResource.DEPTH_INFINITE, null);
-        // }
-        // if (isTestJob) {
-        // talendJavaProject.getTestOutputFolder().refreshLocal(IResource.DEPTH_INFINITE, null);
-        // } else {
-        // talendJavaProject.getOutputFolder().refreshLocal(IResource.DEPTH_INFINITE, null);
-        // }
-        // } catch (CoreException e) {
-        // ExceptionHandler.process(e);
-        // }
     }
 
     protected String getGoals() {
         if (isTestJob) {
             return TalendMavenConstants.GOAL_TEST_COMPILE;
         }
-        return TalendMavenConstants.GOAL_COMPILE;
+
+        if (requirePackaging()) {
+            // We return the PACKAGE goal if the main job and/or one of its recursive job is a Big Data job.
+            return TalendMavenConstants.GOAL_PACKAGE;
+        } else {
+            // Else, a simple compilation is needed.
+            return TalendMavenConstants.GOAL_COMPILE;
+        }
     }
 }

@@ -74,6 +74,8 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
 
     private Boolean runAsExport;
 
+    protected Boolean requirePackaging;
+
     /**
      * DOC marvin AbstractJavaProcessor constructor comment.
      * 
@@ -88,6 +90,43 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
      */
     protected boolean isStandardJob() {
         return true;
+    }
+
+    /**
+     * If a DI job calls somehow a Big Data job, then the PACKAGE Maven goal must be called on all the jobs.
+     * 
+     * @return true if the job or its recursive childs contain a tRunJob which points to a Big Data job
+     */
+    protected boolean requirePackaging() {
+        if (this.requirePackaging == null) {
+            List<? extends INode> generatedNodes = process.getGeneratingNodes();
+            try {
+                for (INode node : generatedNodes) {
+                    if (node.getComponent() != null && "tRunJob".equals(node.getComponent().getName())) {//$NON-NLS-1$
+                        IElementParameter elementParameter = node.getElementParameter("PROCESS:PROCESS_TYPE_PROCESS");//$NON-NLS-1$
+                        if (elementParameter != null) {
+                            Object value = elementParameter.getValue();
+                            if (value != null && !"".equals(value)) {//$NON-NLS-1$
+                                IRepositoryViewObject lastVersion = RunProcessPlugin.getDefault().getRepositoryService()
+                                        .getProxyRepositoryFactory().getLastVersion(value.toString());
+                                if (lastVersion != null) {
+                                    boolean hasBatchOrStreamingSubProcess = hasBatchOrStreamingSubProcess(lastVersion
+                                            .getProperty().getItem());
+                                    if (hasBatchOrStreamingSubProcess) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            } catch (PersistenceException e) {
+                return false;
+            }
+            return false;
+        }
+        return this.requirePackaging;
     }
 
     /**
@@ -206,6 +245,7 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
         return super.run(optionsParam, statisticsPort, tracePort, monitor, processMessageManager);
     }
 
+    @Override
     protected Process execFrom(String path, Level level, int statOption, int traceOption, String... codeOptions)
             throws ProcessorException {
         String[] cmds = getCommandLine(true, isRunAsExport(), statOption, traceOption, codeOptions);
@@ -237,7 +277,7 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
                 // current path by default
                 String userDir = System.getProperty("user.dir");
                 if (userDir != null) {
-                    runDir = new Path(userDir); //$NON-NLS-1$
+                    runDir = new Path(userDir);
                 }
                 if (path != null && new File(path).exists()) {
                     runDir = new Path(path); // unify via Path
@@ -258,31 +298,6 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
      */
     @Override
     public boolean shouldRunAsExport() {
-        List<? extends INode> generatedNodes = process.getGeneratingNodes();
-        try {
-            for (INode node : generatedNodes) {
-                if (node.getComponent() != null && "tRunJob".equals(node.getComponent().getName())) {//$NON-NLS-1$
-                    IElementParameter elementParameter = node.getElementParameter("PROCESS:PROCESS_TYPE_PROCESS");//$NON-NLS-1$
-                    if (elementParameter != null) {
-                        Object value = elementParameter.getValue();
-                        if (value != null && !"".equals(value)) {//$NON-NLS-1$
-                            IRepositoryViewObject lastVersion = RunProcessPlugin.getDefault().getRepositoryService()
-                                    .getProxyRepositoryFactory().getLastVersion(value.toString());
-                            if (lastVersion != null) {
-                                boolean hasBatchOrStreamingSubProcess = hasBatchOrStreamingSubProcess(lastVersion.getProperty()
-                                        .getItem());
-                                if (hasBatchOrStreamingSubProcess) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-        } catch (PersistenceException e) {
-            return false;
-        }
         return false;
     }
 
@@ -372,6 +387,7 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
         }
         exportChoiceMap.put(ExportChoice.binaries, true);
         exportChoiceMap.put(ExportChoice.includeLibs, true);
+        exportChoiceMap.put(ExportChoice.needAssembly, true);
 
         if (progressMonitor.isCanceled()) {
             throw new ProcessorException(new InterruptedException());

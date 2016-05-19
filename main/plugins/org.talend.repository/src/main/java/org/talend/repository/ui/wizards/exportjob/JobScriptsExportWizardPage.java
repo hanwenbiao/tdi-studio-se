@@ -1545,6 +1545,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         exportChoiceMap.put(ExportChoice.needJobScript, Boolean.TRUE);
         exportChoiceMap.put(ExportChoice.needContext, isNeedConext());
         exportChoiceMap.put(ExportChoice.contextName, getContextName());
+        exportChoiceMap.put(ExportChoice.needAssembly, true);
         if (applyToChildrenButton != null) {
             exportChoiceMap.put(ExportChoice.applyToChildren, applyToChildrenButton.getSelection());
         }

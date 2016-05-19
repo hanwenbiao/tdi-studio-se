@@ -178,11 +178,12 @@ public class ExportProcessorHelper {
         exportChoiceMap.put(ExportChoice.includeLibs, true);
         exportChoiceMap.put(ExportChoice.needLog4jLevel, log4jLevel != null);
         exportChoiceMap.put(ExportChoice.log4jLevel, log4jLevel);
+        exportChoiceMap.put(ExportChoice.needAssembly, true);
 
         // set like the method export(...) for buildJob
         exportChoiceMap.put(ExportChoice.jobType, type);
         if (context == null) {
-            context = ((ProcessItem) item).getProcess().getDefaultContext();
+            context = item.getProcess().getDefaultContext();
         }
         exportChoiceMap.put(ExportChoice.contextName, context);
 

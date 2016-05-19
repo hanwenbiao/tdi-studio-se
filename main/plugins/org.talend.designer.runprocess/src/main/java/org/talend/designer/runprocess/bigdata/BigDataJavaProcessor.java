@@ -12,6 +12,8 @@
 // ============================================================================
 package org.talend.designer.runprocess.bigdata;
 
+import java.io.File;
+import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -22,8 +24,11 @@ import java.util.Set;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.talend.commons.exception.CommonExceptionHandler;
+import org.talend.commons.utils.generation.JavaUtils;
+import org.talend.commons.utils.resource.FileExtensions;
 import org.talend.core.model.general.ModuleNeeded;
 import org.talend.core.model.process.IProcess;
 import org.talend.core.model.process.IProcess2;
@@ -39,18 +44,11 @@ import org.talend.designer.runprocess.java.JavaProcessorUtilities;
 import org.talend.designer.runprocess.maven.MavenJavaProcessor;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManager;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManager.ExportChoice;
+import org.talend.utils.files.FileUtils;
 
-/**
- * created by rdubois on 27 janv. 2015 Detailled comment
- *
- */
 public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
 
     protected String windowsAddition, unixAddition;
-
-    protected String unzipFolder;
-
-    protected String archive;
 
     /**
      * DOC rdubois BigDataJavaProcessor constructor comment.
@@ -66,11 +64,25 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
     protected abstract JobScriptsManager createJobScriptsManager(ProcessItem processItem,
             Map<ExportChoice, Object> exportChoiceMap);
 
+    /**
+     * A Big Data job requires the PACKAGE Maven goal to be executed.
+     * 
+     * @return true
+     */
     @Override
-    public boolean shouldRunAsExport() {
-        return true; // for BD job, will run for export mode always.
+    protected boolean requirePackaging() {
+        if (this.requirePackaging == null) {
+            this.requirePackaging = true;
+        }
+        return this.requirePackaging;
     }
 
+    @Override
+    public boolean shouldRunAsExport() {
+        return false;
+    }
+
+    @Override
     protected String getLibFolderInWorkingDir() {
         // ../lib/
         String libRelativePath = ProcessorConstants.CMD_KEY_WORD_TWO_DOT + ProcessorConstants.CMD_KEY_WORD_SLASH
@@ -114,14 +126,14 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
     @Override
     public List<String> extractAheadCommandSegments() {
         if (!ProcessorUtilities.isExportConfig() && isExternalUse()) {
-            return new ArrayList<String>();
+            return new ArrayList<>();
         }
         return super.extractAheadCommandSegments();
     }
 
     @Override
     public List<String> extractJavaCommandSegments() {
-        List<String> commandSegments = new ArrayList<String>();
+        List<String> commandSegments = new ArrayList<>();
         String command = ProcessorConstants.CMD_KEY_WORD_JAVA;
         try {
             command = getInterpreter();
@@ -141,7 +153,7 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
      * @return
      */
     protected List<String> extractJavaVMArguments() {
-        List<String> vmArgsSegments = new ArrayList<String>();
+        List<String> vmArgsSegments = new ArrayList<>();
         String[] vmArgs = getSettingsJVMArguments();
         vmArgsSegments.addAll(Arrays.asList(vmArgs));
         return vmArgsSegments;
@@ -149,7 +161,7 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
 
     @Override
     public List<String> extractCPCommandSegments() {
-        List<String> cpCommandSegments = new ArrayList<String>();
+        List<String> cpCommandSegments = new ArrayList<>();
         cpCommandSegments.add(ProcessorConstants.CMD_KEY_WORD_CP);
         cpCommandSegments.add(makeUpClassPathString());
         return cpCommandSegments;
@@ -162,52 +174,81 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
 
     @Override
     public List<String> extractArgumentSegments() {
-        List<String> list = new ArrayList<String>();
+        List<String> list = new ArrayList<>();
         list.add(ProcessorConstants.CMD_KEY_WORD_LIBJAR);
         StringBuffer libJars = new StringBuffer();
-        Set<String> libNames = JavaProcessorUtilities.extractLibNamesOnlyForMapperAndReducer(process);
+        Set<String> libNames = null;
+        boolean isExport = isExportConfig() || isRunAsExport();
+        if (isExport) {
+            // In an export mode, all the dependencies and the routines are packaged in the lib folder.
+            libNames = JavaProcessorUtilities.extractLibNamesOnlyForMapperAndReducer(process);
+        } else {
+            // In the local mode, all the dependencies are packaged in the lib folder. The routines are not. We will
+            // handle them separetely.
+            libNames = JavaProcessorUtilities.extractLibNamesOnlyForMapperAndReducerWithoutRoutines(process);
+        }
+
+        File libDir = JavaProcessorUtilities.getJavaProjectLibFolder();
+        File targetDir = new File(JavaProcessorUtilities.getTalendJavaProject().getTargetFolder().getLocationURI());
+
+        String libFolder = ""; //$NON-NLS-1$
+        if (libDir != null) {
+            libFolder = new Path(libDir.getAbsolutePath()).toPortableString();
+        }
         if (libNames != null && libNames.size() > 0) {
             Iterator<String> itLibNames = libNames.iterator();
             while (itLibNames.hasNext()) {
-                libJars.append(getLibFolderInWorkingDir() + itLibNames.next()).append(',');
+                if (isExport) {
+                    libJars.append(getLibFolderInWorkingDir() + itLibNames.next()).append(',');
+                } else {
+                    libJars.append(libFolder + "/" + itLibNames.next()).append(','); //$NON-NLS-1$
+                }
             }
         }
-        list.add(libJars.substring(0, libJars.length() - 1));
+        if (isExport) {
+            libJars.append("./" + makeupJobJarName()); //$NON-NLS-1$
+        } else {
+            // Add the routines/beans/udfs
+            Set<String> codeJars = new HashSet<>();
+            codeJars.add(JavaUtils.ROUTINE_JAR_NAME);
+            codeJars.add(JavaUtils.BEANS_JAR_NAME);
+            codeJars.add(JavaUtils.PIGUDFS_JAR_NAME);
+
+            for (String jar : codeJars) {
+                List<File> files = FileUtils.getAllFilesFromFolder(targetDir, new FilenameFilter() {
+
+                    @Override
+                    public boolean accept(File dir, String name) {
+                        if (name == null) {
+                            return false;
+                        }
+                        return name.startsWith(jar) && name.endsWith(FileExtensions.JAR_FILE_SUFFIX);
+                    }
+                });
+                if (files != null) {
+                    for (File f : files) {
+                        libJars.append(new Path(f.getAbsolutePath()).toPortableString() + ","); //$NON-NLS-1$
+                    }
+                }
+            }
+            // ... and add the jar of the job itself
+            if (targetDir != null) {
+                libJars.append(new Path(targetDir.getAbsolutePath()).toPortableString() + "/" + makeupJobJarName()); //$NON-NLS-1$
+            }
+
+        }
+        System.out.println(libJars.toString());
+        list.add(libJars.toString());
         return list;
     }
 
-    /**
-     * Makes up the class path string that should be like this
-     * "[rootPath]/../lib/a.jar:[rootPath]/../lib/b.jar:[rootPath]/job.jar:" in linux. In windows, ":" should be
-     * replaced by ";". About the root path it depends on {@link #getRootWorkingDir()}. The job jar can be gotton by
-     * {@link #makeupJobJarName()}. Added by Marvin Wang on Mar 21, 2013.
-     * 
-     * @return
-     */
     protected String makeUpClassPathString() {
         StringBuffer sb = new StringBuffer();
-        Set<String> libs = extractAllLibs();
-        for (String lib : libs) {
-            sb.append(getLibFolderInWorkingDir()).append(lib);
-            sb.append(extractClassPathSeparator());
+        try {
+            sb.append(getLibsClasspath());
+        } catch (ProcessorException e) {
+            e.printStackTrace();
         }
-
-        // add current always
-        sb.append("."); //$NON-NLS-1$
-        sb.append(extractClassPathSeparator());
-
-        // Append root path to class path.
-        String rootWorkingDir = getRootWorkingDir(false);
-        if (rootWorkingDir != null && rootWorkingDir.length() > 0) {
-            sb.append(rootWorkingDir);
-            sb.append(extractClassPathSeparator());
-        }
-
-        // Append job jar to class path.
-        sb.append(getRootWorkingDir(true));
-        sb.append(makeupJobJarName());
-        sb.append(extractClassPathSeparator());
-
         return sb.toString();
     }
 
@@ -218,7 +259,7 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
      * @return
      */
     protected Set<String> extractAllLibs() {
-        Set<String> libsRequiredByJob = new HashSet<String>();
+        Set<String> libsRequiredByJob = new HashSet<>();
         Set<ModuleNeeded> neededModules = JavaProcessorUtilities.getNeededModulesForProcess(process);
         if (!ProcessorUtilities.isExportConfig()) {
             JavaProcessorUtilities.addLog4jToModuleList(neededModules);
@@ -262,7 +303,9 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
                 setTargetPlatform(tp);
                 // reuse the same api
                 String unixRootPath = getRootWorkingDir(true);
-                this.unixAddition = libJarStr.replace(unixRootPath, ""); // remove the Path root string
+                if (libJarStr != null) {
+                    this.unixAddition = libJarStr.replace(unixRootPath, ""); // remove the Path root string //$NON-NLS-1$
+                }
             } finally {
                 setTargetPlatform(oldTargetPlatform);
             }

@@ -81,6 +81,7 @@ public class BuildJobHandlerTest {
         exportChoiceMap.put(ExportChoice.log4jLevel, null);
         exportChoiceMap.put(ExportChoice.needDependencies, true);
         exportChoiceMap.put(ExportChoice.needParameterValues, false);
+        exportChoiceMap.put(ExportChoice.needAssembly, true);
 
         destinationPath = ExportJobUtil.getTmpFolderPath() + "/testBuildJob.zip";
         BuildJobManager.getInstance().buildJob(destinationPath, processItem, "0.1", "Default", exportChoiceMap,
