@@ -227,7 +227,7 @@ public abstract class AbstractBuildJobHandler implements IBuildJobHandler {
 
     private void addArg(StringBuffer commandBuffer, boolean include, String arg, boolean isHD) {
         if (isHD) {
-            commandBuffer.append(NEGATION);
+            commandBuffer.append(COMMA);
             commandBuffer.append(arg);
         } else {
             addArg(commandBuffer, false, include, arg);

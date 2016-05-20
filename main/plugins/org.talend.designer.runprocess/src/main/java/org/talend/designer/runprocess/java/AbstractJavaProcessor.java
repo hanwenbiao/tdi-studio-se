@@ -14,8 +14,11 @@ package org.talend.designer.runprocess.java;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.log4j.Level;
@@ -32,11 +35,14 @@ import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
 import org.talend.core.model.process.IProcess;
+import org.talend.core.model.process.JobInfo;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.ProcessItem;
 import org.talend.core.model.properties.PropertiesPackage;
 import org.talend.core.model.properties.Property;
+import org.talend.core.model.relationship.RelationshipItemBuilder;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.utils.JavaResourcesHelper;
 import org.talend.core.prefs.ITalendCorePrefConstants;
 import org.talend.core.service.IMRProcessService;
 import org.talend.core.service.IStormProcessService;
@@ -45,12 +51,14 @@ import org.talend.designer.core.model.utils.emf.talendfile.NodeType;
 import org.talend.designer.core.model.utils.emf.talendfile.ProcessType;
 import org.talend.designer.core.runprocess.Processor;
 import org.talend.designer.runprocess.IProcessMessageManager;
+import org.talend.designer.runprocess.ItemCacheManager;
 import org.talend.designer.runprocess.ProcessorConstants;
 import org.talend.designer.runprocess.ProcessorException;
 import org.talend.designer.runprocess.ProcessorUtilities;
 import org.talend.designer.runprocess.RunProcessPlugin;
 import org.talend.repository.ui.utils.ZipToFile;
 import org.talend.repository.ui.wizards.exportjob.JavaJobScriptsExportWSWizardPage.JobExportType;
+import org.talend.repository.ui.wizards.exportjob.scriptsmanager.BDJobReArchieveCreator;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.BuildJobManager;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManager.ExportChoice;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManagerFactory;
@@ -230,16 +238,42 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
             IProcessMessageManager processMessageManager) throws ProcessorException {
         if (isStandardJob()) {
             Property property = this.getProperty();
-            if (isRunAsExport() && property != null) {
+            if (property != null) {
                 // use the same function with ExportModelJavaProcessor, but will do for maven
                 ProcessItem processItem = (ProcessItem) property.getItem();
-                // Step 1: Export job
-                archive = buildExportZip(processItem, monitor);
-                // Step 2: Deploy in local(Maybe just unpack)
-                unzipFolder = unzipAndDeploy(process, archive);
-                // Step 3: Run job from given folder.
-                return execFrom(unzipFolder + File.separatorChar + process.getName(), Level.INFO, statisticsPort, tracePort,
-                        optionsParam);
+                if (isRunAsExport()) {
+                    // Step 1: Export job
+                    archive = buildExportZip(processItem, monitor);
+                    // Step 2: Deploy in local(Maybe just unpack)
+                    unzipFolder = unzipAndDeploy(process, archive);
+                    // Step 3: Run job from given folder.
+                    return execFrom(unzipFolder + File.separatorChar + process.getName(), Level.INFO, statisticsPort, tracePort,
+                            optionsParam);
+                } else {
+                    String version = processItem.getProperty().getVersion();
+                    if (!RelationshipItemBuilder.LATEST_VERSION.equals(version) && version != null && !"".equals(version) //$NON-NLS-1$
+                            && !version.equals(processItem.getProperty().getVersion())) {
+                        processItem = ItemCacheManager.getProcessItem(processItem.getProperty().getId(), version);
+                    }
+                    Set<ProcessItem> processItems = new HashSet<>();
+                    processItems.add(processItem);
+                    // We get the father job childs.
+                    Set<JobInfo> infos = ProcessorUtilities.getChildrenJobInfo(processItem);
+                    Iterator<JobInfo> infoIterator = infos.iterator();
+                    while (infoIterator.hasNext()) {
+                        processItems.add(infoIterator.next().getProcessItem());
+                    }
+
+                    // We iterate over the job and its childs in order to re-archive them if needed.
+                    for (ProcessItem pi : processItems) {
+                        BDJobReArchieveCreator bdRecreator = new BDJobReArchieveCreator(pi, processItem);
+                        bdRecreator.create(new File(this.getTalendJavaProject().getTargetFolder().getLocation()
+                                .toPortableString()
+                                + "/" //$NON-NLS-1$
+                                + JavaResourcesHelper.getJobJarName(property.getLabel(), property.getVersion())
+                                + FileExtensions.JAR_FILE_SUFFIX), false);
+                    }
+                }
             }
         }
         return super.run(optionsParam, statisticsPort, tracePort, monitor, processMessageManager);
@@ -275,7 +309,7 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
 
                 Path runDir = null;
                 // current path by default
-                String userDir = System.getProperty("user.dir");
+                String userDir = System.getProperty("user.dir"); //$NON-NLS-1$
                 if (userDir != null) {
                     runDir = new Path(userDir);
                 }
