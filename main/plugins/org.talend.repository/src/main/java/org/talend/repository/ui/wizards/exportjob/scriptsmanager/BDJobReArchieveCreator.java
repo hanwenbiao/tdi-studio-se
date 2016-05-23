@@ -13,6 +13,7 @@
 package org.talend.repository.ui.wizards.exportjob.scriptsmanager;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -48,6 +49,7 @@ import org.talend.designer.maven.utils.PomUtil;
 import org.talend.designer.runprocess.IRunProcessService;
 import org.talend.repository.ui.utils.ZipToFile;
 import org.talend.repository.ui.wizards.exportjob.JavaJobExportReArchieveCreator;
+import org.talend.utils.files.FileUtils;
 import org.talend.utils.io.FilesUtils;
 
 /**
@@ -180,7 +182,7 @@ public class BDJobReArchieveCreator {
     }
 
     public void create(File file, boolean isExport) {
-        if (file == null || !file.exists() || !file.isFile() || fatherProcessItem == null) {
+        if (file == null || !file.exists() || (isExport && !file.isFile()) || fatherProcessItem == null) {
             return;
         }
 
@@ -194,6 +196,8 @@ public class BDJobReArchieveCreator {
         String fatherLabel = fatherProperty.getLabel();
         String version = property.getVersion();
         JavaJobExportReArchieveCreator creator = new JavaJobExportReArchieveCreator(file.getAbsolutePath(), label);
+        String jobJarName = JavaResourcesHelper.getJobJarName(property.getLabel(), property.getVersion())
+                + FileExtensions.JAR_FILE_SUFFIX;
         try {
             if (isExport) {
                 // If we are in an export context, we first unzip the archive, then we modify the jar.
@@ -207,8 +211,6 @@ public class BDJobReArchieveCreator {
                 // unzip the files.
                 FilesUtils.unzip(file.getAbsolutePath(), zipTmpFolder.getAbsolutePath());
 
-                String jobJarName = JavaResourcesHelper.getJobJarName(property.getLabel(), property.getVersion())
-                        + FileExtensions.JAR_FILE_SUFFIX;
                 // same the the job pom assembly for package.
                 File originalJarFile = new File(zipTmpFolder, fatherLabel + '/' + jobJarName);
                 modifyJar(originalJarFile, jarTmpFolder, creator, jobJarName, zipTmpFolder, property);
@@ -223,8 +225,36 @@ public class BDJobReArchieveCreator {
                     IRunProcessService service = (IRunProcessService) GlobalServiceRegister.getDefault().getService(
                             IRunProcessService.class);
                     ITalendProcessJavaProject talendProcessJavaProject = service.getTalendProcessJavaProject();
-                    modifyJar(file, jarTmpFolder, creator, file.getName(), talendProcessJavaProject.getLibFolder().getParent()
-                            .getLocation().toFile(), property);
+
+                    // In a non-export mode, the routines/beans/udfs jars are not in the lib folder.
+                    Set<String> codeJars = new HashSet<String>();
+                    codeJars.add(JavaUtils.ROUTINE_JAR_NAME);
+                    codeJars.add(JavaUtils.BEANS_JAR_NAME);
+                    codeJars.add(JavaUtils.PIGUDFS_JAR_NAME);
+
+                    for (String jar : codeJars) {
+                        final String jarName = jar;
+                        List<File> files = FileUtils.getAllFilesFromFolder(new File(talendProcessJavaProject.getTargetFolder()
+                                .getLocationURI()), new FilenameFilter() {
+
+                            @Override
+                            public boolean accept(File dir, String name) {
+                                if (name == null) {
+                                    return false;
+                                }
+                                return name.startsWith(jarName) && name.endsWith(FileExtensions.JAR_FILE_SUFFIX);
+                            }
+                        });
+                        if (files != null) {
+                            for (File f : files) {
+                                FilesUtils.copyFile(f, new File(talendProcessJavaProject.getLibFolder().getLocation()
+                                        .toPortableString()
+                                        + "/" + jarName + FileExtensions.JAR_FILE_SUFFIX)); //$NON-NLS-1$
+                            }
+                        }
+                    }
+                    modifyJar(new File(file, jobJarName), jarTmpFolder, creator, jobJarName, talendProcessJavaProject
+                            .getLibFolder().getParent().getLocation().toFile(), property);
                 } else {
                     CommonExceptionHandler.log("Unable to update the job jar because the RunProcessService is not registered."); //$NON-NLS-1$
                 }

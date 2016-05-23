@@ -183,7 +183,6 @@ public abstract class AbstractBuildJobHandler implements IBuildJobHandler {
         addArg(profileBuffer, needXmlMappings(), TalendMavenConstants.PROFILE_INCLUDE_XMLMAPPINGS);
         addArg(profileBuffer, needXmlMappings() && isBinaries, TalendMavenConstants.PROFILE_INCLUDE_RUNNING_XMLMAPPINGS);
 
-        addArg(profileBuffer, !isOptionChoosed(ExportChoice.needAssembly), TalendMavenConstants.PROFILE_PACKAGING_ONLY);
         addArg(profileBuffer, isOptionChoosed(ExportChoice.needAssembly), TalendMavenConstants.PROFILE_PACKAGING_AND_ASSEMBLY);
 
         // rules

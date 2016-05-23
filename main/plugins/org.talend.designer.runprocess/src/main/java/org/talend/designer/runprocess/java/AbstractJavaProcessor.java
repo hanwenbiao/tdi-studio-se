@@ -42,7 +42,6 @@ import org.talend.core.model.properties.PropertiesPackage;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.relationship.RelationshipItemBuilder;
 import org.talend.core.model.repository.IRepositoryViewObject;
-import org.talend.core.model.utils.JavaResourcesHelper;
 import org.talend.core.prefs.ITalendCorePrefConstants;
 import org.talend.core.service.IMRProcessService;
 import org.talend.core.service.IStormProcessService;
@@ -268,10 +267,7 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
                     for (ProcessItem pi : processItems) {
                         BDJobReArchieveCreator bdRecreator = new BDJobReArchieveCreator(pi, processItem);
                         bdRecreator.create(new File(this.getTalendJavaProject().getTargetFolder().getLocation()
-                                .toPortableString()
-                                + "/" //$NON-NLS-1$
-                                + JavaResourcesHelper.getJobJarName(property.getLabel(), property.getVersion())
-                                + FileExtensions.JAR_FILE_SUFFIX), false);
+                                .toPortableString()), false);
                     }
                 }
             }
