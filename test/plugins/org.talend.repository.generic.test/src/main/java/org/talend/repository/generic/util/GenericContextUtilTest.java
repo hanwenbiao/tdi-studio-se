@@ -66,6 +66,9 @@ public class GenericContextUtilTest {
         assertEquals("context.testConn_userId", deserProps.userId.getValue()); //$NON-NLS-1$
         assertEquals("context.testConn_nestedProps_userName", deserProps.nestedProps.userName.getValue()); //$NON-NLS-1$
         assertEquals("context.testConn_nestedProps_userPassword", deserProps.nestedProps.userPassword.getValue()); //$NON-NLS-1$
+        assertEquals(deserProps.userId.getTaggedValue(IGenericConstants.IS_CONTEXT_MODE), true);
+        assertEquals(deserProps.nestedProps.userName.getTaggedValue(IGenericConstants.IS_CONTEXT_MODE), true);
+        assertEquals(deserProps.nestedProps.userPassword.getTaggedValue(IGenericConstants.IS_CONTEXT_MODE), true);
 
         // Test revert context
         ContextType contextType = mock(ContextType.class);
@@ -81,6 +84,9 @@ public class GenericContextUtilTest {
         assertEquals("1", deserProps.userId.getValue()); //$NON-NLS-1$
         assertEquals("testUserName", deserProps.nestedProps.userName.getValue()); //$NON-NLS-1$
         assertEquals("testUserPassword", deserProps.nestedProps.userPassword.getValue()); //$NON-NLS-1$
+        assertEquals(deserProps.userId.getTaggedValue(IGenericConstants.IS_CONTEXT_MODE), false);
+        assertEquals(deserProps.nestedProps.userName.getTaggedValue(IGenericConstants.IS_CONTEXT_MODE), false);
+        assertEquals(deserProps.nestedProps.userPassword.getTaggedValue(IGenericConstants.IS_CONTEXT_MODE), false);
     }
 
     private TestProperties getPropertiesFromConnection(GenericConnection connection) {

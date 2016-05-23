@@ -2194,8 +2194,9 @@ public abstract class AbstractElementPropertySectionController implements Proper
         if (this.curParameter != null) {
             final EComponentCategory category = this.curParameter.getCategory();
             final IElement element = this.curParameter.getElement();
-            if (AbstractPreferenceComposite.inUseProjectSettingMode(element, category,
-                    EParameterName.STATANDLOG_USE_PROJECT_SETTINGS)
+            if (element instanceof FakeElement
+                    || AbstractPreferenceComposite.inUseProjectSettingMode(element, category,
+                            EParameterName.STATANDLOG_USE_PROJECT_SETTINGS)
                     || AbstractPreferenceComposite.inUseProjectSettingMode(element, category,
                             EParameterName.IMPLICITCONTEXT_USE_PROJECT_SETTINGS)) {
                 flag = true; // don't add the listener.
@@ -2369,6 +2370,10 @@ public abstract class AbstractElementPropertySectionController implements Proper
         if (service != null) {
             service.callBeforeActivate(param);
         }
+    }
+
+    protected boolean canAddRepositoryDecoration(IElementParameter param) {
+        return !(elem instanceof FakeElement) && param.isRepositoryValueUsed();
     }
 
 }

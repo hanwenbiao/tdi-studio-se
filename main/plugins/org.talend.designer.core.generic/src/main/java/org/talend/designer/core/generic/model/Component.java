@@ -56,9 +56,7 @@ import org.talend.core.model.process.INode;
 import org.talend.core.model.process.INodeConnector;
 import org.talend.core.model.temp.ECodePart;
 import org.talend.core.prefs.ITalendCorePrefConstants;
-import org.talend.core.runtime.services.ComponentServiceWithValueEvaluator;
 import org.talend.core.ui.services.IComponentsLocalProviderService;
-import org.talend.core.utils.TalendQuoteUtils;
 import org.talend.daikon.NamedThing;
 import org.talend.daikon.properties.Properties;
 import org.talend.daikon.properties.Property;
@@ -642,10 +640,9 @@ public class Component extends AbstractBasicComponent {
             EComponentCategory category) {
         ComponentProperties props = node.getComponentProperties();
         Form form = props.getForm(formName);
-        List<ElementParameter> parameters = ComponentsUtils.getParametersFromForm(node, category, node.getComponentProperties(),
-                form);
-        ComponentService componentService = new ComponentServiceWithValueEvaluator(ComponentsUtils.getComponentService(),
-                new ComponentContextPropertyValueEvaluator(node));
+        List<ElementParameter> parameters = ComponentsUtils.getParametersFromForm(node, category, props, form);
+        props.setValueEvaluator(new ComponentContextPropertyValueEvaluator(node));
+        ComponentService componentService = ComponentsUtils.getComponentService();
         for (ElementParameter parameter : parameters) {
             if (parameter instanceof GenericElementParameter) {
                 GenericElementParameter genericElementParameter = (GenericElementParameter) parameter;
@@ -720,13 +717,13 @@ public class Component extends AbstractBasicComponent {
      * 
      * @param node
      * @param rootProperty
-     * @param paramName 
+     * @param paramName
      * @param schemaProperty
      * @param found
      * @return
      */
-    private boolean setupConnector(final INode node, List<ElementParameter> listParam, String paramName, SchemaProperty schemaProperty,
-            boolean isOutput) {
+    private boolean setupConnector(final INode node, List<ElementParameter> listParam, String paramName,
+            SchemaProperty schemaProperty, boolean isOutput) {
         ComponentProperties rootProperty = node.getComponentProperties();
         boolean found = false;
         for (Connector connector : rootProperty.getAvailableConnectors(null, isOutput)) {
@@ -738,7 +735,7 @@ public class Component extends AbstractBasicComponent {
                 String linkedSchema = ((PropertyPathConnector) connector).getPropertyPath() + ".schema"; //$NON-NLS-1$
                 if (paramName.equals(linkedSchema)) {
                     found = true;
-                    ElementParameter  param = new ElementParameter(node);
+                    ElementParameter param = new ElementParameter(node);
                     param.setName(paramName);
                     param.setFieldType(EParameterFieldType.SCHEMA_REFERENCE);
                     if (!isOutput) {
@@ -764,8 +761,9 @@ public class Component extends AbstractBasicComponent {
      * @param listParam
      * @return
      */
-    private void findSchemaProperties(Properties rootProperty, List<ElementParameter> listParam, Map<String, SchemaProperty> schemaProperties, String parentPropertiesPath) {
-        
+    private void findSchemaProperties(Properties rootProperty, List<ElementParameter> listParam,
+            Map<String, SchemaProperty> schemaProperties, String parentPropertiesPath) {
+
         for (NamedThing nt : rootProperty.getProperties()) {
             String path = parentPropertiesPath;
             if (path == null) {
@@ -785,7 +783,7 @@ public class Component extends AbstractBasicComponent {
                     schemaProperties.put(path, (SchemaProperty) nt);
                 }
             } else if (nt instanceof Properties) {
-                findSchemaProperties((Properties)nt, listParam, schemaProperties, path);
+                findSchemaProperties((Properties) nt, listParam, schemaProperties, path);
             }
         }
     }
@@ -1130,7 +1128,7 @@ public class Component extends AbstractBasicComponent {
         }
         if (property.getType() == Property.Type.ENUM) {
             if (value.indexOf("context.") > -1 || value.indexOf("globalMap.get") > -1) {
-                return value;//$NON-NLS-1$ //$NON-NLS-2$
+                return value;
             } else {
                 return "\"" + value + "\"";//$NON-NLS-1$ //$NON-NLS-2$
             }
@@ -1260,8 +1258,8 @@ public class Component extends AbstractBasicComponent {
         return log;
     }
 
-	@Override
-	public boolean hasConditionalOutputs() {
-		return componentDefinition.isConditionalInputs();
-	}
+    @Override
+    public boolean hasConditionalOutputs() {
+        return componentDefinition.isConditionalInputs();
+    }
 }

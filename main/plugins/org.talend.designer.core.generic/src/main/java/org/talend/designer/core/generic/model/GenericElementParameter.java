@@ -432,40 +432,38 @@ public class GenericElementParameter extends ElementParameter {
         this.drivedByForm = drivedByForm;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.talend.designer.core.model.components.ElementParameter#isRepositoryValueUsed()
-     */
+    public Property getProperty() {
+        NamedThing content = widget.getContent();
+        if (content instanceof Property) {
+            return (Property) content;
+        }
+        return null;
+    }
+
     @Override
     public boolean isRepositoryValueUsed() {
-        NamedThing widgetProperty = widget.getContent();
-        if (widgetProperty instanceof Property) {
-            Property property = ((Property) widgetProperty);
-            if (property.getTaggedValue(IGenericConstants.REPOSITORY_VALUE) != null) {
-                return true;
-            } else {
-                return false;
-            }
+        Property property = getProperty();
+        if (property != null) {
+            return property.getTaggedValue(IGenericConstants.REPOSITORY_VALUE) != null;
         }
         return false;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.talend.designer.core.model.components.ElementParameter#setRepositoryValueUsed(boolean)
-     */
     @Override
     public void setRepositoryValueUsed(boolean repositoryUsed) {
-        NamedThing widgetProperty = widget.getContent();
-        if (widgetProperty instanceof Property) {
-            Property property = ((Property) widgetProperty);
-            if (repositoryUsed) {
-                property.setTaggedValue(IGenericConstants.REPOSITORY_VALUE, property.getName());
-            } else {
-                property.setTaggedValue(IGenericConstants.REPOSITORY_VALUE, null);
-            }
+        Property property = getProperty();
+        if (property != null) {
+            property.setTaggedValue(IGenericConstants.REPOSITORY_VALUE, repositoryUsed ? property.getName() : null);
         }
     }
+
+    @Override
+    public void setContextMode(boolean mode) {
+        super.setContextMode(mode);
+        Property property = getProperty();
+        if (property != null) {
+            property.setTaggedValue(IGenericConstants.IS_DYNAMIC, mode);
+        }
+    }
+
 }

@@ -32,6 +32,7 @@ import org.talend.core.utils.TalendQuoteUtils;
 import org.talend.daikon.NamedThing;
 import org.talend.daikon.properties.Properties.Deserialized;
 import org.talend.daikon.properties.Property;
+import org.talend.designer.core.generic.constants.IGenericConstants;
 import org.talend.designer.core.generic.utils.ComponentsUtils;
 import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
 import org.talend.metadata.managment.ui.model.IConnParamName;
@@ -161,7 +162,7 @@ public class GenericContextUtil {
         GenericConnParamName genericParam = (GenericConnParamName) param;
         String paramName = genericParam.getName();
         String paramValue = ContextParameterUtils.getNewScriptCode(genericVariableName, ECodeLanguage.JAVA);
-        ComponentsUtils.setGenericPropertyValue(componentProperties, paramName, paramValue);
+        setPropertyValue(componentProperties, paramName, paramValue, true);
     }
 
     private static void updateComponentProperties(GenericConnection conn, ComponentProperties componentProperties) {
@@ -189,10 +190,20 @@ public class GenericContextUtil {
                     String value = property.getStringValue();
                     if (value != null) {
                         String originalValue = ContextParameterUtils.getOriginalValue(contextType, value);
+                        property.setTaggedValue(IGenericConstants.IS_CONTEXT_MODE, false);
                         property.setValue(TalendQuoteUtils.removeQuotes(originalValue));
                     }
                 }
             }
+        }
+    }
+
+    private static void setPropertyValue(ComponentProperties componentProperties, String propertyName, String propertyValue,
+            boolean isContextMode) {
+        Property property = componentProperties.getValuedProperty(propertyName);
+        if (property != null) {
+            property.setTaggedValue(IGenericConstants.IS_CONTEXT_MODE, isContextMode);
+            property.setValue(propertyValue);
         }
     }
 
