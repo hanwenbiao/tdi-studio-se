@@ -13,7 +13,6 @@
 package org.talend.designer.runprocess.bigdata;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -45,6 +44,7 @@ import org.talend.designer.runprocess.maven.MavenJavaProcessor;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManager;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManager.ExportChoice;
 import org.talend.utils.files.FileUtils;
+import org.talend.utils.files.FilterInfo;
 
 public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
 
@@ -180,10 +180,11 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
         Set<String> libNames = null;
         boolean isExport = isExportConfig() || isRunAsExport();
         if (isExport) {
-            // In an export mode, all the dependencies and the routines are packaged in the lib folder.
+            // In an export mode, all the dependencies and the routines/beans/udfs are packaged in the lib folder.
             libNames = JavaProcessorUtilities.extractLibNamesOnlyForMapperAndReducer(process);
         } else {
-            // In the local mode, all the dependencies are packaged in the lib folder. The routines are not. We will
+            // In the local mode, all the dependencies are packaged in the lib folder. The routines/beans/udfs are not.
+            // We will
             // handle them separetely.
             libNames = JavaProcessorUtilities.extractLibNamesOnlyForMapperAndReducerWithoutRoutines(process);
         }
@@ -195,49 +196,41 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
         if (libDir != null) {
             libFolder = new Path(libDir.getAbsolutePath()).toPortableString();
         }
+
+        // We iterate over the depencendies, and for each of them, we get its path and append it to the libjars
+        // StringBuffer.
         if (libNames != null && libNames.size() > 0) {
             Iterator<String> itLibNames = libNames.iterator();
             while (itLibNames.hasNext()) {
                 if (isExport) {
+                    // In an export mode, the path is relative to the working directory.
                     libJars.append(getLibFolderInWorkingDir() + itLibNames.next()).append(',');
                 } else {
+                    // In a local mode, the path is absolute.
                     libJars.append(libFolder + "/" + itLibNames.next()).append(','); //$NON-NLS-1$
                 }
             }
         }
         if (isExport) {
+            // In an export mode, we add the job jar which is located in the current working directory
             libJars.append("./" + makeupJobJarName()); //$NON-NLS-1$
         } else {
-            // Add the routines/beans/udfs
-            Set<String> codeJars = new HashSet<>();
-            codeJars.add(JavaUtils.ROUTINE_JAR_NAME);
-            codeJars.add(JavaUtils.BEANS_JAR_NAME);
-            codeJars.add(JavaUtils.PIGUDFS_JAR_NAME);
+            // In a local mode,we must append the routines/beans/udfs jars which are located in the target directory.
+            Set<FilterInfo> codeJars = new HashSet<>();
+            codeJars.add(new FilterInfo(JavaUtils.ROUTINE_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
+            codeJars.add(new FilterInfo(JavaUtils.BEANS_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
+            codeJars.add(new FilterInfo(JavaUtils.PIGUDFS_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
 
-            for (String jar : codeJars) {
-                List<File> files = FileUtils.getAllFilesFromFolder(targetDir, new FilenameFilter() {
-
-                    @Override
-                    public boolean accept(File dir, String name) {
-                        if (name == null) {
-                            return false;
-                        }
-                        return name.startsWith(jar) && name.endsWith(FileExtensions.JAR_FILE_SUFFIX);
-                    }
-                });
-                if (files != null) {
-                    for (File f : files) {
-                        libJars.append(new Path(f.getAbsolutePath()).toPortableString() + ","); //$NON-NLS-1$
-                    }
-                }
+            List<File> files = FileUtils.getAllFilesFromFolder(targetDir, codeJars);
+            for (File f : files) {
+                libJars.append(new Path(f.getAbsolutePath()).toPortableString() + ","); //$NON-NLS-1$
             }
-            // ... and add the jar of the job itself
+            // ... and add the jar of the job itself also located in the target directory/
             if (targetDir != null) {
                 libJars.append(new Path(targetDir.getAbsolutePath()).toPortableString() + "/" + makeupJobJarName()); //$NON-NLS-1$
             }
 
         }
-        System.out.println(libJars.toString());
         list.add(libJars.toString());
         return list;
     }

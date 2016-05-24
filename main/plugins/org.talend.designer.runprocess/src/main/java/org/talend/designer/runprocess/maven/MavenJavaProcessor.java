@@ -77,7 +77,7 @@ public class MavenJavaProcessor extends JavaProcessor {
     @Override
     public Set<JobInfo> getBuildChildrenJobs() {
         if (buildChildrenJobs == null || buildChildrenJobs.isEmpty()) {
-            buildChildrenJobs = new HashSet<JobInfo>();
+            buildChildrenJobs = new HashSet<>();
 
             if (property != null) {
                 Set<JobInfo> infos = ProcessorUtilities.getChildrenJobInfo((ProcessItem) property.getItem());
@@ -220,7 +220,10 @@ public class MavenJavaProcessor extends JavaProcessor {
             CreateMavenBundleTemplatePom createTemplatePom = createMavenTemplatePom();
             if (createTemplatePom != null) {
                 createTemplatePom.setOverwrite(true);
+                boolean previousValue = ProcessUtils.isHDInsight();
+                ProcessUtils.setHDInsight(ProcessUtils.isDistributionExist((ProcessItem) property.getItem()));
                 createTemplatePom.create(null);
+                ProcessUtils.setHDInsight(previousValue);
             }
         } catch (Exception e) {
             ExceptionHandler.process(e);
@@ -299,8 +302,14 @@ public class MavenJavaProcessor extends JavaProcessor {
     public void build(IProgressMonitor monitor) throws Exception {
         final ITalendProcessJavaProject talendJavaProject = getTalendJavaProject();
 
-        final Map<String, Object> argumentsMap = new HashMap<String, Object>();
+        final Map<String, Object> argumentsMap = new HashMap<>();
         argumentsMap.put(TalendProcessArgumentConstant.ARG_GOAL, getGoals());
+        // boolean previousHDIValue = ProcessUtils.isHDInsight();
+        // ProcessUtils.setHDInsight(ProcessUtils.isDistributionExist((ProcessItem) property.getItem()));
+        // if (!isTestJob && requirePackaging() && ProcessUtils.isHDInsight()) {
+        //            argumentsMap.put(TalendProcessArgumentConstant.ARG_PROGRAM_ARGUMENTS, "-Pinclude-contexts"); //$NON-NLS-1$
+        // }
+        // ProcessUtils.setHDInsight(previousHDIValue);
 
         talendJavaProject.buildModules(monitor, null, argumentsMap);
     }

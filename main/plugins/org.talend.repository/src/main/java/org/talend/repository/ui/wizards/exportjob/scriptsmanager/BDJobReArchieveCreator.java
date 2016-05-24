@@ -13,7 +13,6 @@
 package org.talend.repository.ui.wizards.exportjob.scriptsmanager;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -50,6 +49,7 @@ import org.talend.designer.runprocess.IRunProcessService;
 import org.talend.repository.ui.utils.ZipToFile;
 import org.talend.repository.ui.wizards.exportjob.JavaJobExportReArchieveCreator;
 import org.talend.utils.files.FileUtils;
+import org.talend.utils.files.FilterInfo;
 import org.talend.utils.io.FilesUtils;
 
 /**
@@ -201,6 +201,7 @@ public class BDJobReArchieveCreator {
         try {
             if (isExport) {
                 // If we are in an export context, we first unzip the archive, then we modify the jar.
+
                 // create temp folders.
                 creator.deleteTempFiles(); // clean temp folder
                 File zipTmpFolder = new File(creator.getTmpFolder(), "zip-" + label + "_" + version); //$NON-NLS-1$ //$NON-NLS-2$
@@ -226,32 +227,17 @@ public class BDJobReArchieveCreator {
                             IRunProcessService.class);
                     ITalendProcessJavaProject talendProcessJavaProject = service.getTalendProcessJavaProject();
 
-                    // In a non-export mode, the routines/beans/udfs jars are not in the lib folder.
-                    Set<String> codeJars = new HashSet<String>();
-                    codeJars.add(JavaUtils.ROUTINE_JAR_NAME);
-                    codeJars.add(JavaUtils.BEANS_JAR_NAME);
-                    codeJars.add(JavaUtils.PIGUDFS_JAR_NAME);
+                    // In a local mode, the routines/beans/udfs jars are not in the lib folder. We then copy them.
+                    Set<FilterInfo> codeJars = new HashSet<FilterInfo>();
+                    codeJars.add(new FilterInfo(JavaUtils.ROUTINE_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
+                    codeJars.add(new FilterInfo(JavaUtils.BEANS_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
+                    codeJars.add(new FilterInfo(JavaUtils.PIGUDFS_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
 
-                    for (String jar : codeJars) {
-                        final String jarName = jar;
-                        List<File> files = FileUtils.getAllFilesFromFolder(new File(talendProcessJavaProject.getTargetFolder()
-                                .getLocationURI()), new FilenameFilter() {
-
-                            @Override
-                            public boolean accept(File dir, String name) {
-                                if (name == null) {
-                                    return false;
-                                }
-                                return name.startsWith(jarName) && name.endsWith(FileExtensions.JAR_FILE_SUFFIX);
-                            }
-                        });
-                        if (files != null) {
-                            for (File f : files) {
-                                FilesUtils.copyFile(f, new File(talendProcessJavaProject.getLibFolder().getLocation()
-                                        .toPortableString()
-                                        + "/" + jarName + FileExtensions.JAR_FILE_SUFFIX)); //$NON-NLS-1$
-                            }
-                        }
+                    List<File> files = FileUtils.getAllFilesFromFolder(new File(talendProcessJavaProject.getTargetFolder()
+                            .getLocationURI()), codeJars);
+                    for (File f : files) {
+                        FilesUtils.copyFile(f, new File(talendProcessJavaProject.getLibFolder().getLocation().toPortableString()
+                                + "/" + f.getName())); //$NON-NLS-1$
                     }
                     modifyJar(new File(file, jobJarName), jarTmpFolder, creator, jobJarName, talendProcessJavaProject
                             .getLibFolder().getParent().getLocation().toFile(), property);

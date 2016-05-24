@@ -116,33 +116,33 @@
 					</execution>
 				</executions>
 			</plugin>
-		</plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-jar-plugin</artifactId>
+              <executions>
+                <execution>
+                  <id>default-jar</id>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                  <configuration>
+                    <includes>
+                      <!-- only package the job classes -->
+                      <include>${talend.job.path}/*.class</include>
+                      <include>${talend.job.path}/**/*.wsdl</include>
+                    </includes>
+                  </configuration>
+                </execution>
+             </executions>
+           </plugin>			
+		 </plugins>
 	</build>
 	<profiles>
 	    <profile>
 	       <id>packaging-and-assembly</id>
 	       <build>
 	         <plugins>
-               <plugin>
-                 <groupId>org.apache.maven.plugins</groupId>
-                   <artifactId>maven-jar-plugin</artifactId>
-                   <executions>
-                     <execution>
-                       <id>default-jar</id>
-                       <phase>package</phase>
-                       <goals>
-                         <goal>jar</goal>
-                       </goals>
-                       <configuration>
-                         <includes>
-                           <!-- only package the job classes -->
-                           <include>${talend.job.path}/*.class</include>
-                           <include>${talend.job.path}/**/*.wsdl</include>
-                         </includes>
-                       </configuration>
-                     </execution>
-                  </executions>
-               </plugin> 	         
                <plugin>
                  <groupId>org.apache.maven.plugins</groupId>
                  <artifactId>maven-assembly-plugin</artifactId>

@@ -249,6 +249,8 @@ public abstract class AbstractJavaProcessor extends Processor implements IJavaPr
                     return execFrom(unzipFolder + File.separatorChar + process.getName(), Level.INFO, statisticsPort, tracePort,
                             optionsParam);
                 } else {
+                    // If we are not in an export mode, we still have to check whether jobs need to be re-archived or
+                    // not.
                     String version = processItem.getProperty().getVersion();
                     if (!RelationshipItemBuilder.LATEST_VERSION.equals(version) && version != null && !"".equals(version) //$NON-NLS-1$
                             && !version.equals(processItem.getProperty().getVersion())) {
