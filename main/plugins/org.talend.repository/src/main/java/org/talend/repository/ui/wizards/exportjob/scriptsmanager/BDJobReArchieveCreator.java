@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -227,18 +228,37 @@ public class BDJobReArchieveCreator {
                             IRunProcessService.class);
                     ITalendProcessJavaProject talendProcessJavaProject = service.getTalendProcessJavaProject();
 
+                    File targetFolder = new File(talendProcessJavaProject.getTargetFolder().getLocationURI());
                     // In a local mode, the routines/beans/udfs jars are not in the lib folder. We then copy them.
-                    Set<FilterInfo> codeJars = new HashSet<FilterInfo>();
-                    codeJars.add(new FilterInfo(JavaUtils.ROUTINE_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
-                    codeJars.add(new FilterInfo(JavaUtils.BEANS_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
-                    codeJars.add(new FilterInfo(JavaUtils.PIGUDFS_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
 
-                    List<File> files = FileUtils.getAllFilesFromFolder(new File(talendProcessJavaProject.getTargetFolder()
-                            .getLocationURI()), codeJars);
-                    for (File f : files) {
+                    // Copy routines and rename it to match the
+                    // "JavaUtils.ROUTINE_JAR_NAME + FileExtensions.JAR_FILE_SUFFIX" name
+                    Set<FilterInfo> codeJars = new HashSet<FilterInfo>(Arrays.asList(new FilterInfo(JavaUtils.ROUTINE_JAR_NAME,
+                            FileExtensions.JAR_FILE_SUFFIX)));
+                    for (File f : FileUtils.getAllFilesFromFolder(targetFolder, codeJars)) {
                         FilesUtils.copyFile(f, new File(talendProcessJavaProject.getLibFolder().getLocation().toPortableString()
-                                + "/" + f.getName())); //$NON-NLS-1$
+                                + "/" + JavaUtils.ROUTINE_JAR_NAME + FileExtensions.JAR_FILE_SUFFIX)); //$NON-NLS-1$
                     }
+
+                    // Copy beans and rename it to match the "JavaUtils.BEANS_JAR_NAME + FileExtensions.JAR_FILE_SUFFIX"
+                    // name
+                    codeJars = new HashSet<FilterInfo>(Arrays.asList(new FilterInfo(JavaUtils.BEANS_JAR_NAME,
+                            FileExtensions.JAR_FILE_SUFFIX)));
+                    for (File f : FileUtils.getAllFilesFromFolder(targetFolder, codeJars)) {
+                        FilesUtils.copyFile(f, new File(talendProcessJavaProject.getLibFolder().getLocation().toPortableString()
+                                + "/" + JavaUtils.BEANS_JAR_NAME + FileExtensions.JAR_FILE_SUFFIX)); //$NON-NLS-1$
+                    }
+
+                    // Copy udfs and rename it to match the
+                    // "JavaUtils.PIGUDFS_JAR_NAME + FileExtensions.JAR_FILE_SUFFIX"
+                    // name
+                    codeJars = new HashSet<FilterInfo>(Arrays.asList(new FilterInfo(JavaUtils.PIGUDFS_JAR_NAME,
+                            FileExtensions.JAR_FILE_SUFFIX)));
+                    for (File f : FileUtils.getAllFilesFromFolder(targetFolder, codeJars)) {
+                        FilesUtils.copyFile(f, new File(talendProcessJavaProject.getLibFolder().getLocation().toPortableString()
+                                + "/" + JavaUtils.PIGUDFS_JAR_NAME + FileExtensions.JAR_FILE_SUFFIX)); //$NON-NLS-1$
+                    }
+
                     modifyJar(new File(file, jobJarName), jarTmpFolder, creator, jobJarName, talendProcessJavaProject
                             .getLibFolder().getParent().getLocation().toFile(), property);
                 } else {
