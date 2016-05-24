@@ -336,9 +336,10 @@ public class ComponentsUtils {
                 param.setListItemsShowIf(listItemsShowIf);
                 param.setListItemsNotShowIf(listItemsNotShowIf);
                 param.setValue(GenericTableUtils.getTableValues(table, param));
-
             }
-            // param.setReadOnly(false);
+            if (!param.isReadOnly()) {
+                param.setReadOnly(element.isReadOnly());
+            }
             param.setSerialized(true);
             param.setDynamicSettings(true);
             // Avoid adding duplicate prameter.

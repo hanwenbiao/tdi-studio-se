@@ -2761,6 +2761,15 @@
               name="UpdateJobletContextInJobMigrationTask"
               version="6.1.2">
         </projecttask>
+
+        <projecttask
+              beforeLogon="false"
+              breaks="6.2.0"
+              class="org.talend.repository.model.migration.SetDefaultValueForNewerEmailFirstOfTDI35976"
+              id="org.talend.repository.model.migration.SetDefaultValueForNewerEmailFirstOfTDI35976"
+              name="SetDefaultValueForNewerEmailFirstOfTDI35976"
+              version="6.2.1">
+        </projecttask>
    </extension>
 
    <extension

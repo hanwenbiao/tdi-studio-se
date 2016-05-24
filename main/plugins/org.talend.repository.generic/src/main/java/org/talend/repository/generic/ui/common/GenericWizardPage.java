@@ -110,7 +110,8 @@ public abstract class GenericWizardPage extends WizardPage {
     protected ContextComposite addContextFields(Composite parentComposite) {
         contextHandler = new GenericContextHandler();
         contextHandler.setParameters(getContextParameters());
-        ContextComposite contextComp = new ContextComposite(parentComposite, connectionItem, contextHandler);
+        ContextComposite contextComp = new ContextComposite(parentComposite, connectionItem, !isRepositoryObjectEditable,
+                contextHandler);
         return contextComp;
     }
 

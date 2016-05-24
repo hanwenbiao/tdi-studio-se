@@ -50,11 +50,14 @@ public class ContextComposite extends Composite {
 
     private ConnectionItem connectionItem;
 
+    private boolean isReadOnly;
+
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
-    public ContextComposite(Composite parent, ConnectionItem connectionItem, IContextHandler contextHandler) {
+    public ContextComposite(Composite parent, ConnectionItem connectionItem, boolean isReadOnly, IContextHandler contextHandler) {
         super(parent, SWT.NONE);
         this.connectionItem = connectionItem;
+        this.isReadOnly = isReadOnly;
         this.contextHandler = contextHandler;
         GridLayout gridLayout = new GridLayout();
         gridLayout.marginWidth = 0;
@@ -134,8 +137,8 @@ public class ContextComposite extends Composite {
 
     private void refreshContextBtn() {
         boolean isContextMode = isContextMode();
-        exportContextBtn.setEnabled(!isContextMode);
-        revertContextBtn.setEnabled(isContextMode);
+        exportContextBtn.setEnabled(!isReadOnly && !isContextMode);
+        revertContextBtn.setEnabled(!isReadOnly && isContextMode);
     }
 
     private void fireExportContextEvent() {
