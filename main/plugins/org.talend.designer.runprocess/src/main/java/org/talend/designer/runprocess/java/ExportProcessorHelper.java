@@ -182,7 +182,7 @@ public class ExportProcessorHelper {
         // set like the method export(...) for buildJob
         exportChoiceMap.put(ExportChoice.jobType, type);
         if (context == null) {
-            context = ((ProcessItem) item).getProcess().getDefaultContext();
+            context = item.getProcess().getDefaultContext();
         }
         exportChoiceMap.put(ExportChoice.contextName, context);
 
