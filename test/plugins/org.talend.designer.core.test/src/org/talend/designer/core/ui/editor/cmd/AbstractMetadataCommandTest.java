@@ -35,7 +35,7 @@ import org.talend.designer.core.test.util.IMetadataTableConstants;
 import org.talend.designer.core.test.util.MetadataUtils;
 import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.ui.editor.process.Process;
-import org.talend.test.utils.testproperties.SchemaProperties;
+import org.talend.designer.core.utils.SchemaProperties;
 
 /**
  * created by ycbai on 2016年4月19日 Detailled comment

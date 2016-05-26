@@ -22,7 +22,6 @@ import org.talend.core.model.process.Element;
 import org.talend.daikon.properties.presentation.Form;
 import org.talend.designer.core.model.FakeElement;
 import org.talend.designer.core.model.components.ElementParameter;
-import org.talend.test.utils.testproperties.TestProperties;
 
 /**
  * created by hcyi on Feb 16, 2016 Detailled comment

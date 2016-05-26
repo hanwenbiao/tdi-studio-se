@@ -35,7 +35,7 @@ import org.talend.core.ui.component.ComponentsFactoryProvider;
 import org.talend.designer.core.test.util.NodeTestCreator;
 import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.ui.editor.process.Process;
-import org.talend.test.utils.testproperties.TestProperties;
+import org.talend.designer.core.utils.TestProperties;
 
 /**
  * created by ycbai on 2016年4月18日 Detailled comment
