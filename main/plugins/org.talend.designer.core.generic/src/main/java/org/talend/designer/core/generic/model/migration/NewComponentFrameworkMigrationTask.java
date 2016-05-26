@@ -36,7 +36,6 @@ import org.talend.core.model.components.ModifyComponentsAction;
 import org.talend.core.model.components.conversions.IComponentConversion;
 import org.talend.core.model.components.filters.IComponentFilter;
 import org.talend.core.model.components.filters.NameComponentFilter;
-import org.talend.core.model.metadata.IEbcdicConstant;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTable;
 import org.talend.core.model.metadata.builder.ConvertionHelper;
@@ -46,10 +45,10 @@ import org.talend.core.model.process.EConnectionType;
 import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.properties.Item;
+import org.talend.core.runtime.util.GenericTypeUtils;
 import org.talend.core.ui.component.ComponentsFactoryProvider;
 import org.talend.daikon.NamedThing;
 import org.talend.daikon.properties.Property;
-import org.talend.daikon.properties.Property.Type;
 import org.talend.designer.core.generic.constants.IGenericConstants;
 import org.talend.designer.core.generic.model.GenericElementParameter;
 import org.talend.designer.core.generic.model.GenericTableUtils;
@@ -97,7 +96,7 @@ public abstract class NewComponentFrameworkMigrationTask extends AbstractJobMigr
                         NamedThing currNamedThing = ComponentsUtils.getGenericSchemaElement(compProperties, paramName);
                         String oldParamName = props.getProperty(currComponentName + IGenericConstants.EXP_SEPARATOR + paramName);
                         if (oldParamName != null && !(oldParamName = oldParamName.trim()).isEmpty()) {
-                            if (currNamedThing instanceof Property && ((Property) currNamedThing).getType() == Type.SCHEMA) {
+                            if (currNamedThing instanceof Property && (GenericTypeUtils.isSchemaType((Property<?>) currNamedThing))) {
                                 schemaParamMap.put(
                                         paramName,
                                         props.getProperty(currComponentName + IGenericConstants.EXP_SEPARATOR + paramName
@@ -109,7 +108,7 @@ public abstract class NewComponentFrameworkMigrationTask extends AbstractJobMigr
                                     ComponentReferenceProperties refProps = (ComponentReferenceProperties) currNamedThing;
                                     refProps.referenceType
                                             .setValue(ComponentReferenceProperties.ReferenceType.COMPONENT_INSTANCE);
-                                    refProps.componentInstanceId.setValue(ParameterUtilTool.convertParameterValue(paramType));
+                                    refProps.componentInstanceId.setStoredValue(ParameterUtilTool.convertParameterValue(paramType));
                                     refProps.componentInstanceId.setTaggedValue(IGenericConstants.ADD_QUOTES, true);
                                 } else {
                                     if (EParameterFieldType.TABLE.equals(param.getFieldType())) {
@@ -139,9 +138,9 @@ public abstract class NewComponentFrameworkMigrationTask extends AbstractJobMigr
                             }
                         } else {
                             if (currNamedThing instanceof Property) {
-                                if (((Property) currNamedThing).isRequired()
-                                        && Property.Type.STRING.equals(((Property) currNamedThing).getType())) {
-                                    ((Property) currNamedThing).setValue("\"\""); //$NON-NLS-1$
+                                if (((Property<?>) currNamedThing).isRequired()
+                                        && GenericTypeUtils.isStringType(((Property<?>) currNamedThing).getType())) {
+                                    ((Property<?>) currNamedThing).setStoredValue("\"\""); //$NON-NLS-1$
                                 }
                             }
                         }
@@ -268,12 +267,6 @@ public abstract class NewComponentFrameworkMigrationTask extends AbstractJobMigr
             lineValues.put(columnName, elementValue.getValue());
         }
         return tableValues;
-    }
-
-    @Override
-    public Date getOrder() {
-        GregorianCalendar gc = new GregorianCalendar(2015, 11, 18, 12, 0, 0);
-        return gc.getTime();
     }
 
     public static class FakeNode extends AbstractNode {

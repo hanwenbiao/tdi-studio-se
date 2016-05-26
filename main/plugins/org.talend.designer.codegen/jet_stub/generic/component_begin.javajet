@@ -84,15 +84,15 @@ for (Component.CodegenPropInfo propInfo : propsToProcess) { // propInfo
             Property property = (Property)prop;
             if (property.getFlags() != null && (property.getFlags().contains(Property.Flags.DESIGN_TIME_ONLY) || property.getFlags().contains(Property.Flags.HIDDEN)))
             	continue;
-		    Object value = property.getValue();
+		    Object value = property.getStoredValue();
             if (value != null && (value instanceof List)) { // if
                     // added for the support of tables
                         String tmpVarName = cid+propInfo.fieldName.replace('.','_')+"_"+property.getName();
                         %>
-                        java.util.List<String> <%=tmpVarName %> = new java.util.ArrayList<String>();
+                        java.util.List<Object> <%=tmpVarName %> = new java.util.ArrayList<Object>();
                         <%
-                        for (String subPropertyValue : (java.util.List<String>)property.getValue()) {
-                            if ((property.getType() == Property.Type.BOOLEAN) || (property.getType() == Property.Type.ENUM)) {
+                        for (Object subPropertyValue : (java.util.List<Object>)property.getValue()) {
+                            if (property.getPossibleValues() != null && property.getPossibleValues().size() > 0) {
                             %>
                                 <%=tmpVarName %>.add("<%=subPropertyValue %>");
                             <%
@@ -116,15 +116,29 @@ for (Component.CodegenPropInfo propInfo : propsToProcess) { // propInfo
                     props_<%=cid %><%=propInfo.fieldName%>.setValue("<%=property.getName()%>",
                     routines.system.PasswordEncryptUtil.decryptPassword(<%=component.getCodegenValue(property, property.getStringValue())%>));
                     <%
-            } else if (value != null && Property.Type.DATE.equals(property.getType())){
+            } else if (value != null && "java.util.Date".equals(property.getType())){
             		%>
     				props_<%=cid %><%=propInfo.fieldName%>.setValue("<%=property.getName()%>",
 	                	TalendDate.parseDate("yyyy-MM-dd HH:mm:ss",<%=component.getCodegenValue(property, property.getStringValue())%>));
     				<%
+            } else if (property instanceof org.talend.daikon.properties.EnumProperty) {
+                    if (property.getValue() != null) {
+                    %>
+                    props_<%=cid %><%=propInfo.fieldName%>.setValue("<%=property.getName()%>",
+                        <%=property.getType()%>.<%=property.getValue()%>);
+                    <%
+                    }
+            } else if (property instanceof org.talend.daikon.properties.SchemaProperty) {
+                    if (property.getValue() != null) {
+                    %>
+                    props_<%=cid %><%=propInfo.fieldName%>.setValue("<%=property.getName()%>",
+                        new org.apache.avro.Schema.Parser().parse(<%=component.getCodegenValue(property, property.getStringValue())%>));
+                    <%
+                    }
             } else if (value != null && (!(value instanceof String) || !((String)value).equals(""))) { // if
 					%>
                     props_<%=cid %><%=propInfo.fieldName%>.setValue("<%=property.getName()%>",
-                    <%=component.getCodegenValue(property, property.getStringValue())%>);
+                    <%=component.getCodegenValue(property, value.toString())%>);
                     <%
     		} // if
         }//else may be a ComponentProperties so ignore

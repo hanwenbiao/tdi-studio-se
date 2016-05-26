@@ -1957,6 +1957,8 @@ public class Process extends Element implements IProcess2, IGEFProcess, ILastVer
         loadProjectParameters(processType);
         loadAdditionalProperties();
 
+        loadContexts(processType);
+
         try {
             loadNodes(processType, nodesHashtable);
         } catch (PersistenceException e) {
@@ -1970,7 +1972,6 @@ public class Process extends Element implements IProcess2, IGEFProcess, ILastVer
 
         loadRejectConnector(nodesHashtable);
 
-        loadContexts(processType);
         // feature 7410
         loadNotes(processType);
         loadSubjobs(processType);

@@ -15,11 +15,15 @@ package org.talend.designer.core.generic.context;
 import java.util.List;
 
 import org.apache.avro.Schema;
+import org.apache.commons.lang3.ClassUtils;
 import org.talend.core.model.process.IContext;
 import org.talend.core.model.process.IContextManager;
 import org.talend.core.model.process.INode;
 import org.talend.core.model.process.IProcess;
 import org.talend.core.model.utils.ContextParameterUtils;
+import org.talend.core.runtime.util.GenericTypeUtils;
+import org.talend.daikon.exception.TalendRuntimeException;
+import org.talend.daikon.properties.EnumProperty;
 import org.talend.daikon.properties.Property;
 import org.talend.daikon.properties.PropertyValueEvaluator;
 
@@ -40,7 +44,18 @@ public class ComponentContextPropertyValueEvaluator implements PropertyValueEval
         if (storedValue == null) {
             return storedValue;
         }
-        if (storedValue instanceof Schema || storedValue instanceof List || storedValue instanceof Enum) {
+        List<?> possibleValues = ((Property) property).getPossibleValues();
+        if (possibleValues != null) {
+            if (storedValue instanceof String && !ContextParameterUtils.isContainContextParam((String) storedValue)) {
+                for (Object possibleValue : possibleValues) {
+                    if (possibleValue.toString().equals(storedValue)) {
+                        return possibleValue;
+                    }
+                }
+            }
+        }
+        if (storedValue instanceof Schema || storedValue instanceof List || storedValue instanceof Enum
+                || storedValue instanceof Boolean) {
             return storedValue;
         }
         IContext context = null;
@@ -54,7 +69,32 @@ public class ComponentContextPropertyValueEvaluator implements PropertyValueEval
             }
         }
         if (context != null) {
-            return ContextParameterUtils.parseScriptContextCode(String.valueOf(storedValue), context);
+            String valueFromContext = ContextParameterUtils.parseScriptContextCode(String.valueOf(storedValue), context);
+            if (GenericTypeUtils.isBooleanType(property)) {
+                return new Boolean(valueFromContext);
+            }
+            if (GenericTypeUtils.isIntegerType(property) && !valueFromContext.isEmpty()) {
+                try {
+                    return Integer.valueOf(valueFromContext);
+                } catch (Exception e) {
+                    // context value not existing anymore
+                    // return any value to let the component work without exception
+                    return 0;
+                }
+            }
+            if (GenericTypeUtils.isEnumType(property)) {
+                List<?> propertyPossibleValues = ((Property<?>) property).getPossibleValues();
+                if (propertyPossibleValues != null) {
+                    for (Object possibleValue : propertyPossibleValues) {
+                        if (possibleValue.toString().equals(valueFromContext)) {
+                            return possibleValue;
+                        }
+                    }
+                }
+            }
+            if (valueFromContext != null) {
+                return valueFromContext;
+            }
         }
         return storedValue;
     }

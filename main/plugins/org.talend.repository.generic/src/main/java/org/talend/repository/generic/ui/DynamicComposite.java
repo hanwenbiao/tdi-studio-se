@@ -38,6 +38,7 @@ import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.Property;
 import org.talend.core.ui.check.Checker;
 import org.talend.core.ui.check.IChecker;
+import org.talend.daikon.NamedThing;
 import org.talend.daikon.properties.Properties;
 import org.talend.daikon.properties.PropertyValueEvaluator;
 import org.talend.daikon.properties.ValidationResult;
@@ -154,25 +155,38 @@ public class DynamicComposite extends MultipleThreadDynamicComposite implements 
                     }
                 } else if (EParameterFieldType.NAME_SELECTION_AREA.equals(genericElementParameter.getFieldType())
                         && theConnection != null) {
-                    List<MetadataTable> metadataTables = SchemaUtils.getMetadataTables(theConnection, SubContainer.class);
-                    List<String> tableLabels = new ArrayList<>();
-                    for (MetadataTable metaTable : metadataTables) {
-                        tableLabels.add(metaTable.getLabel());
+                    List<?> possibleValues = genericElementParameter.getPossibleValues();
+                    if (possibleValues != null && possibleValues.size() > 0) {
+                        List<NamedThing> values = new ArrayList<>();
+                        List<MetadataTable> metadataTables = SchemaUtils.getMetadataTables(theConnection, SubContainer.class);
+                        List<String> tableLabels = new ArrayList<>();
+                        for (MetadataTable metaTable : metadataTables) {
+                            tableLabels.add(metaTable.getLabel());
+                        }
+                        for (Object valObj : possibleValues) {
+                            if (valObj instanceof NamedThing) {
+                                NamedThing value = (NamedThing) valObj;
+                                if (tableLabels.contains(value.getName())) {
+                                    values.add(value);
+                                }
+                            }
+                        }
+                        genericElementParameter.setValue(values);
                     }
-                    genericElementParameter.setValue(tableLabels);
                 }
                 if (properties != null && isRepository(element)) {
-                    String repositoryValue = parameter.getRepositoryValue();
+                    String repositoryValue = genericElementParameter.getRepositoryValue();
                     if (repositoryValue == null) {
                         if (genericElementParameter.getValue() != null) {
                             genericElementParameter.setRepositoryValue(genericElementParameter.getName());
                             repositoryValue = genericElementParameter.getRepositoryValue();
                         }
                     }
-                    if (parameter.isShow(currentParameters) && (repositoryValue != null)
-                            && (!parameter.getName().equals(EParameterName.PROPERTY_TYPE.getName()))
-                            && parameter.getCategory() == section) {
-                        org.talend.daikon.properties.Property property = properties.getValuedProperty(parameter.getName());
+                    if (genericElementParameter.isShow(currentParameters) && (repositoryValue != null)
+                            && (!genericElementParameter.getName().equals(EParameterName.PROPERTY_TYPE.getName()))
+                            && genericElementParameter.getCategory() == section) {
+                        org.talend.daikon.properties.Property property = properties.getValuedProperty(genericElementParameter
+                                .getName());
                         if (property != null && property.getTaggedValue(IGenericConstants.REPOSITORY_VALUE) != null) {
                             genericElementParameter.setRepositoryValueUsed(true);
                             genericElementParameter.setReadOnly(true);

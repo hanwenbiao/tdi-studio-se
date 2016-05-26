@@ -56,6 +56,7 @@ import org.talend.core.model.process.INode;
 import org.talend.core.model.process.INodeConnector;
 import org.talend.core.model.temp.ECodePart;
 import org.talend.core.prefs.ITalendCorePrefConstants;
+import org.talend.core.runtime.util.GenericTypeUtils;
 import org.talend.core.ui.services.IComponentsLocalProviderService;
 import org.talend.daikon.NamedThing;
 import org.talend.daikon.properties.Properties;
@@ -166,12 +167,13 @@ public class Component extends AbstractBasicComponent {
         Property returns = props.returns;
         if (returns != null) {
             NodeReturn nodeRet = null;
-            for (Property children : returns.getChildren()) {
+            for (Object childObj : returns.getChildren()) {
+                Property child = (Property) childObj;
                 nodeRet = new NodeReturn();
-                nodeRet.setType(ComponentsUtils.getTalendTypeFromPropertyType(children.getType()).getId());
-                nodeRet.setDisplayName(children.getDisplayName());
-                nodeRet.setName(children.getName());
-                Object object = children.getTaggedValue(IGenericConstants.AVAILABILITY);
+                nodeRet.setType(ComponentsUtils.getTalendTypeFromProperty(child).getId());
+                nodeRet.setDisplayName(child.getDisplayName());
+                nodeRet.setName(child.getName());
+                Object object = child.getTaggedValue(IGenericConstants.AVAILABILITY);
                 if (object != null) {
                     nodeRet.setAvailability(object.toString());
                 } else {
@@ -1126,14 +1128,14 @@ public class Component extends AbstractBasicComponent {
         if (Boolean.valueOf(String.valueOf(property.getTaggedValue(IGenericConstants.ADD_QUOTES)))) {
             return "\"" + value + "\"";//$NON-NLS-1$ //$NON-NLS-2$ 
         }
-        if (property.getType() == Property.Type.ENUM) {
+        if (GenericTypeUtils.isEnumType(property)) {
             if (value.indexOf("context.") > -1 || value.indexOf("globalMap.get") > -1) {
                 return value;
             } else {
                 return "\"" + value + "\"";//$NON-NLS-1$ //$NON-NLS-2$
             }
         }
-        if (property.getType() == Property.Type.SCHEMA) {
+        if (GenericTypeUtils.isSchemaType(property)) {
             // Handles embedded escaped quotes which might occur
             return "\"" + value.replace("\\\"", "\\\\\"").replace("\"", "\\\"") + "\"";//$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$
         }
@@ -1186,7 +1188,14 @@ public class Component extends AbstractBasicComponent {
     @Override
     public void initNodePropertiesFromSerialized(INode node, String serialized) {
         if (node != null) {
-            node.setComponentProperties(ComponentProperties.fromSerialized(serialized, ComponentProperties.class).properties);
+            node.setComponentProperties(ComponentProperties.fromSerialized(serialized, ComponentProperties.class,
+                    new Properties.PostSerializationSetup<ComponentProperties>() {
+
+                        @Override
+                        public void setup(ComponentProperties properties) {
+                            properties.setValueEvaluator(new ComponentContextPropertyValueEvaluator(node));
+                        }
+                    }).properties);
         }
     }
 

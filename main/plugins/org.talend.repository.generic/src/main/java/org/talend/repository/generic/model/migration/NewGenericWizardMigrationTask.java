@@ -26,6 +26,7 @@ import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.runtime.util.GenericTypeUtils;
 import org.talend.core.utils.ReflectionUtils;
 import org.talend.daikon.NamedThing;
 import org.talend.designer.core.generic.constants.IGenericConstants;
@@ -71,8 +72,8 @@ public abstract class NewGenericWizardMigrationTask extends AbstractItemMigratio
                         if (value != null) {
                             NamedThing namedThing = componentProperties.getProperty(propsKey);
                             if (namedThing != null && namedThing instanceof org.talend.daikon.properties.Property) {
-                                org.talend.daikon.properties.Property property = (org.talend.daikon.properties.Property) namedThing;
-                                if (org.talend.daikon.properties.Property.Type.ENUM.equals(property.getType())) {
+                                org.talend.daikon.properties.Property<?> property = (org.talend.daikon.properties.Property<?>) namedThing;
+                                if (GenericTypeUtils.isEnumType(property)) {
                                     Object obj = props.get(propsKey + "." + value);//$NON-NLS-1$
                                     if (obj != null) {
                                         componentProperties.setValue(propsKey, obj);

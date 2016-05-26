@@ -42,6 +42,7 @@ import org.talend.components.api.service.ComponentService;
 import org.talend.components.api.wizard.ComponentWizard;
 import org.talend.core.context.Context;
 import org.talend.core.context.RepositoryContext;
+import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
@@ -50,12 +51,14 @@ import org.talend.core.model.repository.RepositoryObject;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.runtime.CoreRuntimePlugin;
 import org.talend.core.runtime.services.IGenericWizardService;
+import org.talend.daikon.properties.Properties;
 import org.talend.daikon.properties.Properties.Deserialized;
 import org.talend.daikon.properties.presentation.Form;
 import org.talend.designer.core.generic.constants.IGenericConstants;
 import org.talend.designer.core.model.components.ElementParameter;
 import org.talend.metadata.managment.ui.utils.ConnectionContextHelper;
 import org.talend.metadata.managment.ui.wizard.CheckLastVersionRepositoryWizard;
+import org.talend.metadata.managment.ui.wizard.context.MetadataContextPropertyValueEvaluator;
 import org.talend.repository.generic.i18n.Messages;
 import org.talend.repository.generic.internal.IGenericWizardInternalService;
 import org.talend.repository.generic.internal.service.GenericWizardInternalService;
@@ -97,6 +100,8 @@ public class GenericConnWizard extends CheckLastVersionRepositoryWizard {
     private String originalStatus;
 
     private RepositoryNode repNode;
+
+    private List<IMetadataTable> oldMetadataTable;
 
     private IGenericWizardService wizardService;
 
@@ -154,6 +159,7 @@ public class GenericConnWizard extends CheckLastVersionRepositoryWizard {
             this.originalPurpose = this.connectionItem.getProperty().getPurpose();
             this.originalStatus = this.connectionItem.getProperty().getStatusCode();
         }
+        oldMetadataTable = GenericUpdateManager.getConversionMetadataTables(connectionItem.getConnection());
         compService = new GenericWizardInternalService().getComponentService();
         compService.setRepository(new GenericRepository());
         IWizardContainer container = this.getContainer();
@@ -183,7 +189,13 @@ public class GenericConnWizard extends CheckLastVersionRepositoryWizard {
             String compPropertiesStr = connection.getCompProperties();
             if (compPropertiesStr != null) {
                 Deserialized<ComponentProperties> fromSerialized = ComponentProperties.fromSerialized(compPropertiesStr,
-                        ComponentProperties.class);
+                        ComponentProperties.class, new Properties.PostSerializationSetup<ComponentProperties>() {
+
+                            @Override
+                            public void setup(ComponentProperties properties) {
+                                properties.setValueEvaluator(new MetadataContextPropertyValueEvaluator(connection));
+                            }
+                        });
                 if (fromSerialized != null) {
                     componentWizard = internalService.getTopLevelComponentWizard(fromSerialized.properties, repNode.getId());
                 }
@@ -260,7 +272,7 @@ public class GenericConnWizard extends CheckLastVersionRepositoryWizard {
                         compService.afterFormFinish(form.getName(), (ComponentProperties) form.getProperties());
                     }
                     if (!creation) {
-                        GenericUpdateManager.updateGenericConnection(connectionItem);
+                        GenericUpdateManager.updateGenericConnection(connectionItem, oldMetadataTable);
                     }
                     updateConnectionItem(factory);
                 } catch (Throwable e) {

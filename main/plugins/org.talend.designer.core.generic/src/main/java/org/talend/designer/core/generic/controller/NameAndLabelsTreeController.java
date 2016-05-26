@@ -81,9 +81,16 @@ public class NameAndLabelsTreeController extends AbstractElementPropertySectionC
 
             @Override
             protected List<String> getSelectedElementLabels() {
+                List<String> labels = new ArrayList<>();
                 Object value = param.getValue();
                 if (value instanceof List) {
-                    return (List) value;
+                    List<?> values = (List<?>) value;
+                    for (Object valueObj : values) {
+                        if (valueObj instanceof NamedThing) {
+                            labels.add(((NamedThing) valueObj).getName());
+                        }
+                    }
+                    return labels;
                 }
                 return null;
             }

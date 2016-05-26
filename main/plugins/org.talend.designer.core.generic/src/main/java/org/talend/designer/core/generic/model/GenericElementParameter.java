@@ -34,6 +34,7 @@ import org.talend.core.model.metadata.MetadataToolAvroHelper;
 import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.process.EConnectionType;
+import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IElement;
 import org.talend.core.model.process.INodeConnector;
@@ -105,6 +106,11 @@ public class GenericElementParameter extends ElementParameter {
      */
     @Override
     public Object getValue() {
+        if (getFieldType() == EParameterFieldType.CLOSED_LIST) {
+            if (super.getValue() != null) {
+                return super.getValue().toString();
+            }
+        }
         return super.getValue();
     }
 
@@ -136,17 +142,27 @@ public class GenericElementParameter extends ElementParameter {
             if (newValue instanceof String) {
                 ((SchemaProperty) widgetProperty).setValue(new Schema.Parser().parse((String) newValue));
             } else if (newValue instanceof Schema) {
-                ((SchemaProperty) widgetProperty).setValue(newValue);
+                ((SchemaProperty) widgetProperty).setStoredValue(((Schema) newValue).toString());
             }
         } else if (widgetProperty instanceof Property) {
-            Property se = (Property) widgetProperty;
+            Property se = (Property<?>) widgetProperty;
             Object oldValue = se.getValue();
-            if (newValue != null && !newValue.equals(oldValue)) {
-                se = (Property) getSubProperties().getProperty(se.getName());
+            Object value = newValue;
+            List<?> propertyPossibleValues = ((Property<?>) widgetProperty).getPossibleValues();
+            if (propertyPossibleValues != null) {
+                for (Object possibleValue : propertyPossibleValues) {
+                    if (possibleValue.toString().equals(newValue)) {
+                        value = possibleValue;
+                        break;
+                    }
+                }
+            }
+            if (value != null && !value.equals(oldValue)) {
+                se = (Property<?>) getSubProperties().getProperty(se.getName());
                 if (isDrivedByForm()) {
-                    form.setValue(se.getName(), newValue);
+                    form.setValue(se.getName(), value);
                 } else {
-                    se.setValue(newValue);
+                    se.setValue(value);
                 }
                 fireConnectionPropertyChangedEvent(newValue);
             }

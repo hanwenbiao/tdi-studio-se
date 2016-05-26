@@ -37,6 +37,7 @@ import org.talend.components.api.properties.ComponentProperties;
 import org.talend.components.api.service.ComponentService;
 import org.talend.core.model.components.IComponent;
 import org.talend.core.model.components.IComponentsFactory;
+import org.talend.core.model.metadata.builder.connection.Connection;
 import org.talend.core.model.metadata.types.JavaType;
 import org.talend.core.model.metadata.types.JavaTypesManager;
 import org.talend.core.model.process.EComponentCategory;
@@ -47,6 +48,7 @@ import org.talend.core.model.process.IElementParameterDefaultValue;
 import org.talend.core.model.process.INode;
 import org.talend.core.model.process.INodeConnector;
 import org.talend.core.model.utils.ContextParameterUtils;
+import org.talend.core.runtime.util.GenericTypeUtils;
 import org.talend.core.ui.component.ComponentsFactoryProvider;
 import org.talend.core.utils.TalendQuoteUtils;
 import org.talend.daikon.NamedThing;
@@ -57,7 +59,9 @@ import org.talend.daikon.properties.Property;
 import org.talend.daikon.properties.SchemaProperty;
 import org.talend.daikon.properties.presentation.Form;
 import org.talend.daikon.properties.presentation.Widget;
+import org.talend.daikon.properties.presentation.Widget.WidgetType;
 import org.talend.designer.core.generic.constants.IGenericConstants;
+import org.talend.designer.core.generic.context.ComponentContextPropertyValueEvaluator;
 import org.talend.designer.core.generic.i18n.Messages;
 import org.talend.designer.core.generic.model.Component;
 import org.talend.designer.core.generic.model.GenericElementParameter;
@@ -68,6 +72,7 @@ import org.talend.designer.core.model.FakeElement;
 import org.talend.designer.core.model.components.ElementParameter;
 import org.talend.designer.core.model.components.ElementParameterDefaultValue;
 import org.talend.designer.core.model.components.NodeConnector;
+import org.talend.metadata.managment.ui.wizard.context.MetadataContextPropertyValueEvaluator;
 
 /**
  * created by hcyi on Sep 11, 2015 Detailled comment
@@ -270,7 +275,7 @@ public class ComponentsUtils {
             } else if (widgetProperty instanceof Property) {
                 Property property = (Property) widgetProperty;
                 param.setRequired(property.isRequired());
-                param.setValue(getParameterValue(element, property));
+                param.setValue(getParameterValue(element, property, fieldType));
                 if (EParameterFieldType.NAME_SELECTION_AREA.equals(fieldType)) {
                     // Disable context support for this filed type.
                     param.setSupportContext(false);
@@ -391,19 +396,12 @@ public class ComponentsUtils {
         return params;
     }
 
-    public static Object getParameterValue(IElement element, Property property) {
-        Object paramValue = property.getValue();
+    public static Object getParameterValue(IElement element, Property property, EParameterFieldType fieldType) {
+        Object paramValue = property.getStoredValue();
         if (paramValue instanceof List) {
             return null;
         }
-        Property.Type propertyType = property.getType();
-        switch (propertyType) {
-        case STRING:
-            if (!(element instanceof FakeElement || ContextParameterUtils.isContainContextParam((String) paramValue))) {
-                paramValue = TalendQuoteUtils.addQuotesIfNotExist((String) paramValue);
-            }
-            break;
-        case ENUM:
+        if (fieldType == EParameterFieldType.CLOSED_LIST) {
             if (paramValue == null) {// TUP-4145
                 List<?> possibleValues = property.getPossibleValues();
                 if (possibleValues != null && possibleValues.size() > 0) {
@@ -411,15 +409,15 @@ public class ComponentsUtils {
                     property.setValue(paramValue);
                 }
             }
-            break;
-        case BOOLEAN:
+        } else if (GenericTypeUtils.isStringType(property)) {
+            if (!(element instanceof FakeElement || ContextParameterUtils.isContainContextParam((String) paramValue))) {
+                paramValue = TalendQuoteUtils.addQuotesIfNotExist((String) paramValue);
+            }
+        } else if (GenericTypeUtils.isBooleanType(property)) {
             if (paramValue == null) {
                 paramValue = Boolean.FALSE;
                 property.setValue(paramValue);
             }
-            break;
-        default:
-            break;
         }
         return paramValue;
     }
@@ -558,45 +556,24 @@ public class ComponentsUtils {
         return propertyName;
     }
 
-    public static JavaType getTalendTypeFromPropertyType(Property.Type type) {
-        switch (type) {
-        case BOOLEAN:
-            return JavaTypesManager.BOOLEAN;
-        case BYTE_ARRAY:
-            return JavaTypesManager.BYTE_ARRAY;
-        case DATE:
-        case DATETIME:
-            return JavaTypesManager.DATE;
-        case DECIMAL:
-            return JavaTypesManager.BIGDECIMAL;
-        case DOUBLE:
-            return JavaTypesManager.DOUBLE;
-        case DYNAMIC:
-            return JavaTypesManager.DYNAMIC;
-        case FLOAT:
-            return JavaTypesManager.FLOAT;
-        case INT:
+    public static JavaType getTalendTypeFromProperty(Property<?> property) {
+        if (GenericTypeUtils.isStringType(property)) {
+            return JavaTypesManager.STRING;
+        } else if (GenericTypeUtils.isIntegerType(property)) {
             return JavaTypesManager.INTEGER;
-        default:
+        } else if (GenericTypeUtils.isBooleanType(property)) {
+            return JavaTypesManager.BOOLEAN;
+        } else {
             return JavaTypesManager.STRING;
         }
     }
 
-    public static boolean isSupportContext(Property schemaElement) {
-        Property.Type type = schemaElement.getType();
-        switch (type) {
-        case STRING:
-        case INT:
-        case DATE:
-        case DATETIME:
-        case DECIMAL:
-        case FLOAT:
-        case DOUBLE:
+    public static boolean isSupportContext(Property<?> property) {
+        if (GenericTypeUtils.isSchemaType(property)) {
+            return false;
+        } else {
             return true;
-        default:
-            break;
         }
-        return false;
     }
 
     public static boolean isSameComponentProperties(ComponentProperties componentProperties, NamedThing widgetProperty) {
@@ -609,17 +586,23 @@ public class ComponentsUtils {
         return false;
     }
 
-    public static ComponentProperties getComponentPropertiesFromSerialized(String serialized) {
+    public static ComponentProperties getComponentPropertiesFromSerialized(String serialized, Connection connection) {
         if (serialized != null) {
             Deserialized<ComponentProperties> fromSerialized = ComponentProperties.fromSerialized(serialized,
-                    ComponentProperties.class);
+                    ComponentProperties.class, new Properties.PostSerializationSetup<ComponentProperties>() {
+
+                        @Override
+                        public void setup(ComponentProperties properties) {
+                            properties.setValueEvaluator(new MetadataContextPropertyValueEvaluator(connection));
+                        }
+                    });
             if (fromSerialized != null) {
                 return fromSerialized.properties;
             }
         }
         return null;
     }
-
+    
     /**
      * Check if the current trigger contains correct information to be translated to a NodeConnector. For example, we
      * currently do not support LOOKUP or MERGE trigger.

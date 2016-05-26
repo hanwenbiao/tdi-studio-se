@@ -27,6 +27,7 @@ import org.talend.core.model.metadata.types.JavaTypesManager;
 import org.talend.core.model.process.IContextParameter;
 import org.talend.core.model.properties.ContextItem;
 import org.talend.core.model.utils.ContextParameterUtils;
+import org.talend.core.runtime.util.GenericTypeUtils;
 import org.talend.core.ui.context.model.table.ConectionAdaptContextVariableModel;
 import org.talend.core.utils.TalendQuoteUtils;
 import org.talend.daikon.NamedThing;
@@ -61,11 +62,15 @@ public class GenericContextUtil {
                     GenericConnParamName connParamName = (GenericConnParamName) param;
                     String name = connParamName.getName();
                     ComponentProperties componentProperties = getComponentProperties((GenericConnection) connection);
-                    Property property = componentProperties.getValuedProperty(name);
+                    Property<?> property = componentProperties.getValuedProperty(name);
                     paramName = paramPrefix + connParamName.getContextVar();
+                    
                     JavaType type = JavaTypesManager.STRING;
                     if (property.isFlag(Property.Flags.ENCRYPT)) {
                         type = JavaTypesManager.PASSWORD;
+                    }
+                    if (GenericTypeUtils.isIntegerType(property)) {
+                        type = JavaTypesManager.INTEGER;
                     }
                     String value = property == null || property.getValue() == null ? null : String.valueOf(property.getValue());
                     ConnectionContextHelper.createParameters(varList, paramName, value, type);

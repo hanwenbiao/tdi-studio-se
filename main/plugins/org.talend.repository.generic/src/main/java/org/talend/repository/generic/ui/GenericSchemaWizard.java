@@ -90,7 +90,7 @@ public class GenericSchemaWizard extends CheckLastVersionRepositoryWizard implem
         if (tableWizardPage.isPageComplete()) {
             IMetadataTable newTable = MetadataToolHelper.convert(metadataTable);
             if (!newTable.sameMetadataAs(oldMetadataTable)) {
-                SchemaUtils.updateComponentSchema(metadataTable);
+                SchemaUtils.updateComponentSchema(metadataTable, connectionItem.getConnection());
             }
             GenericUpdateManager.updateSingleSchema(connectionItem, metadataTable, oldMetadataTable, oldTableMap);
             IProxyRepositoryFactory factory = CoreRuntimePlugin.getInstance().getProxyRepositoryFactory();

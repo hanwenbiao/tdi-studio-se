@@ -145,7 +145,7 @@ public class SchemaUtilsTest {
         table.getColumns().add(addedColumn);
 
         // Invoke updateComponentSchema() method.
-        SchemaUtils.updateComponentSchema(table);
+        SchemaUtils.updateComponentSchema(table, null);
 
         // Check if the schema object is updated correctly.
         String componentPropertiesStr = null;
@@ -161,7 +161,7 @@ public class SchemaUtilsTest {
             }
         }
 
-        ComponentProperties componentProperties = ComponentsUtils.getComponentPropertiesFromSerialized(componentPropertiesStr);
+        ComponentProperties componentProperties = ComponentsUtils.getComponentPropertiesFromSerialized(componentPropertiesStr, null);
         Object schemaValue = componentProperties.getValuedProperty(schemaPropertyName).getValue();
         Schema avroSchema = getAvroSchema(schemaValue);
         props.schema.schema.setValue(avroSchema);
