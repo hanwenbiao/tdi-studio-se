@@ -222,9 +222,24 @@ public abstract class BigDataJavaProcessor extends MavenJavaProcessor {
             codeJars.add(new FilterInfo(JavaUtils.PIGUDFS_JAR_NAME, FileExtensions.JAR_FILE_SUFFIX));
 
             List<File> files = FileUtils.getAllFilesFromFolder(targetDir, codeJars);
+            boolean routinesHaveBeenFound = false;
             for (File f : files) {
+                if (!routinesHaveBeenFound && f.getName().startsWith(JavaUtils.ROUTINE_JAR_NAME)) {
+                    routinesHaveBeenFound = true;
+                }
                 libJars.append(new Path(f.getAbsolutePath()).toPortableString() + ","); //$NON-NLS-1$
             }
+            // If routines are not found, try to guess their future location. This case happens when the target folder
+            // is clean and when a DI job tRunJob is asking for the child bigdata command line at generation time, while
+            // the routines have
+            // not been built yet. Nevertheless, we make the assumption that they are going to be located in the target
+            // folder when the job is going to be running.
+            if (!routinesHaveBeenFound) {
+                File routinesJar = new File(targetDir + "/" + JavaUtils.ROUTINE_JAR_NAME + "-" + PomUtil.getDefaultMavenVersion() //$NON-NLS-1$ //$NON-NLS-2$
+                        + FileExtensions.JAR_FILE_SUFFIX);
+                libJars.append(new Path(routinesJar.getAbsolutePath()).toPortableString() + ","); //$NON-NLS-1$
+            }
+
             // ... and add the jar of the job itself also located in the target directory/
             if (targetDir != null) {
                 libJars.append(new Path(targetDir.getAbsolutePath()).toPortableString() + "/" + makeupJobJarName()); //$NON-NLS-1$
