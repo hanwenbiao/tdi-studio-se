@@ -343,6 +343,14 @@
       >
       <DEFAULT>10000</DEFAULT>
     </PARAMETER>
+    
+    <PARAMETER
+    	NAME="TABLE_WITH_SCHEMA"
+    	FIELD="CHECK"
+    	NUM_ROW="40"
+    >
+    	<DEFAULT>false</DEFAULT>
+    </PARAMETER>
 
   </ADVANCED_PARAMETERS>
 
